@@ -1,12 +1,13 @@
 import pygame
 import sys
 import random
+import os
 
-import config 
+import config, train
 from classes import Car, Obstacle
 
+
 # Inicialização
-pygame.init()
 window = pygame.display.set_mode((config.WIN_WIDTH, config.WIN_HEIGHT))
 pygame.display.set_caption("Run")
 clock = pygame.time.Clock()
@@ -42,7 +43,6 @@ def car_collision(car, obstacles):
             return False
         
     return True
-
 
 # Função Principal
 def run_game():
@@ -90,5 +90,45 @@ def run_game():
     pygame.quit()
     sys.exit()
 
-if __name__ == "__main__":
-    run_game()
+def game_simulation(net):
+    car = Car()
+    obstacles = []
+    frames = 0
+    score = 0
+    running = True
+
+    spawn_rate_in_frames = int(config.FPS * (config.SPAWN_INTERVAL / 1000))
+
+    while running:
+        # Tempo e Frames
+        score += 1
+        frames += 1
+
+        # Obstaculos
+        if frames % spawn_rate_in_frames == 0:
+            obstacles_pos = random.sample(range(config.TRACK_DIVISION), config.NUM_OBSTACLES)
+            for i in obstacles_pos:
+                obstacles.append(Obstacle(i))
+            
+        obstacles = [obs for obs in obstacles if obs.y < config.GAME_HEIGHT]
+
+        # Lógica da IA
+        inputs = car.get_inputs(obstacles)
+        output = net.activate(inputs)
+
+        if output[0] > 0.5: car.move("LEFT")
+        elif output[1] > 0.5: car.move("RIGHT")
+
+        for obs in obstacles:
+            obs.move()
+
+
+        if not car_collision(car, obstacles): break
+
+        if score > 2000:
+            print("score maximo")
+            break
+
+    return score 
+
+
